@@ -1,0 +1,45 @@
+name: Bump V8 Target Version
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+    
+jobs:
+  bump_version:
+    name: bump_version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v2
+        with:
+          persist-credentials: false
+      
+      - name: Get latest version
+        id: versionReq
+        uses: fjogeleit/http-request-action@v1.8.0
+        with:
+          url: "https://omahaproxy.appspot.com/v8.json"
+          method: "GET"
+      
+      - name: Write version to environment
+        run: echo "FOREIGN_VERSION=${{ fromJson(steps.versionReq.outputs.response).v8_version }}" >> $GITHUB_ENV
+
+      - name: Write version to file
+        run: if [ $(cat V8_VERSION) != "${{ env.FOREIGN_VERSION }}" ]; then echo ${{ env.FOREIGN_VERSION }} > V8_VERSION; fi
+      
+      - name: Determine if changes have been made
+        run: if [ "$(git update-index --refresh)" != "" ]; then echo "CHANGES=TRUE" >> $GITHUB_ENV; fi
+      
+      - name: Commit bump
+        if: ${{ env.CHANGES }}
+        run: |
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git commit -m "Bump V8 to version ${{ env.FOREIGN_VERSION }}" -a
+
+      - name: Push bump
+        if: ${{ env.CHANGES }}
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          github_token: ${{ secrets.PAT }}
+          branch: master

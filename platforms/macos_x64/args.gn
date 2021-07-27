@@ -1,0 +1,13 @@
+is_debug = false
+target_cpu = "x64"
+use_custom_libcxx = false
+clang_use_chrome_plugins = false
+is_component_build = false
+is_clang = true
+v8_static_library = true
+v8_monolithic = true
+v8_use_external_startup_data = false
+v8_enable_test_features = false
+v8_enable_i18n_support = false
+treat_warnings_as_errors = false
+symbol_level = 0
