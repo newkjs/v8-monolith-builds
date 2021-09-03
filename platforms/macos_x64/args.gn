@@ -1,6 +1,7 @@
 is_debug = false
 target_cpu = "x64"
 use_custom_libcxx = false
+use_cxx11 = true
 clang_use_chrome_plugins = false
 is_component_build = false
 v8_static_library = true
