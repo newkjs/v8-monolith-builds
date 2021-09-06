@@ -84,10 +84,10 @@ jobs:
             arch: x64
             lib_name: v8_monolith.lib
           
-          - os: macOS-latest
-            name: macos
-            arch: x64
-            lib_name: libv8_monolith.a
+#           - os: macOS-latest
+#             name: macos
+#             arch: x64
+#             lib_name: libv8_monolith.a
     
     env:
       DEPOT_TOOLS_WIN_TOOLCHAIN: 0
