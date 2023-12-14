@@ -4,17 +4,17 @@ on:
   push:
     branches:
       - main
-  
+
   pull_request:
     branches:
       - main
-  
+
   workflow_dispatch:
     inputs:
       version:
         description: V8 Version
         required: false
-  
+
 jobs:
   release_headers:
     name: release_headers
@@ -22,13 +22,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Clone repository
-        uses: actions/checkout@v2
-      
+        uses: actions/checkout@v4.1.1
+
       - name: Setup python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4.7.1
         with:
-          python-version: 2.7.17
-      
+          python-version: 3.11.4
+
       - name: Get target V8 version
         id: version
         shell: pwsh
@@ -42,21 +42,21 @@ jobs:
         run: |
           git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
           echo "$pwd/depot_tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        
+
       - name: Checkout V8 source
         run: |
           fetch v8
           cd v8
           git checkout ${{ env.V8_VERSION }}
           gclient sync
-      
+
       - name: Prepare out directory
         shell: pwsh
         run: |
           New-Item -ItemType directory -Path ./out/
           Copy-Item -Path ./v8/include -Recurse -Filter *.h -Destination ./out/ -Container
           Compress-Archive -Path ./out/include/ -DestinationPath ./out/include.zip
-      
+
       - name: Release V8 header files
         uses: softprops/action-gh-release@v1
         with:
@@ -78,32 +78,38 @@ jobs:
             name: linux
             arch: x64
             lib_name: libv8_monolith.a
-          
+
           - os: windows-latest
             name: windows
             arch: x64
             lib_name: v8_monolith.lib
-          
+
 #           - os: macOS-latest
 #             name: macos
 #             arch: x64
 #             lib_name: libv8_monolith.a
-    
+
     env:
       DEPOT_TOOLS_WIN_TOOLCHAIN: 0
-    
+
     steps:
       - name: Clone repository
-        uses: actions/checkout@v2
-      
+        uses: actions/checkout@v4.1.1
+
       - name: Setup python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4.7.1
         with:
-          python-version: 2.7.17
-      
+          python-version: 3.11.4
+
+      - name: Set Swap Space (Linux)
+        if: runner.os == 'Linux'
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 10
+
       - name: Install MSVC/MCBuild (Windows)
         if: runner.os == 'Windows'
-        uses: microsoft/setup-msbuild@v1.0.2
+        uses: microsoft/setup-msbuild@v1.3.1
 
       - name: Get target V8 version
         id: version
@@ -118,24 +124,27 @@ jobs:
         run: |
           git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
           echo "$pwd/depot_tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        
+
       - name: Checkout V8 source
         run: |
           fetch v8
           cd v8
           git checkout ${{ env.V8_VERSION }}
           gclient sync
-      
+
       - name: Build V8
         shell: pwsh
         run: |
           Set-Location -Path v8
           python tools/dev/v8gen.py ${{ matrix.config.arch }}.release
+          if (-Not (Test-Path "./out.gn/${{ matrix.config.arch }}.release/")){
+            New-Item -ItemType Directory "./out.gn/${{ matrix.config.arch }}.release/"
+          }
           Copy-Item "../platforms/${{ matrix.config.name }}_${{ matrix.config.arch }}/args.gn" -Destination "./out.gn/${{ matrix.config.arch }}.release/args.gn" -force
           gn gen out.gn/${{ matrix.config.arch }}.release
           Get-Content ./out.gn/${{ matrix.config.arch }}.release/args.gn | Write-Output
           ninja -C out.gn/${{ matrix.config.arch }}.release
-      
+
       - name: Prepare out directory
         shell: pwsh
         run: |
@@ -143,7 +152,7 @@ jobs:
           Copy-Item -Path ./v8/out.gn/x64.release/obj/${{ matrix.config.lib_name }} -Destination ./out/${{ matrix.config.name }}_${{ matrix.config.arch }}_${{ matrix.config.lib_name }}
           If ($IsLinux -or $IsMacOS) { Copy-Item -Path ./v8/out.gn/x64.release/d8 -Destination ./out/${{ matrix.config.name }}_${{ matrix.config.arch }}_d8 }
           If ($IsWindows) { Copy-Item -Path ./v8/out.gn/x64.release/d8.exe -Destination ./out/${{ matrix.config.name }}_${{ matrix.config.arch }}_d8.exe }
-      
+
       - name: Release monolithic V8 lib & d8
         uses: softprops/action-gh-release@v1
         with:
